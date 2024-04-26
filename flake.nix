@@ -1,5 +1,5 @@
 {
-  description = "Your jupyenv project";
+  description = "Azure MlOps learning project";
 
   nixConfig.extra-substituters = [
     "https://tweag-jupyter.cachix.org"
@@ -28,16 +28,35 @@
     ]
     (
       system: let
+        extraPyPackages = pyPkgs: with pyPkgs; [
+          numpy
+          scipy
+          matplotlib
+          pandas
+          scikit-learn
+        ];
+
         inherit (jupyenv.lib.${system}) mkJupyterlabNew;
         jupyterlab = mkJupyterlabNew ({...}: {
           nixpkgs = inputs.nixpkgs;
-          imports = [(import ./kernels.nix)];
+          imports = [(import ./kernels.nix { pkgs = nixpkgs; inherit extraPyPackages; })];
         });
+        developPkgs = import nixpkgs {
+          inherit system;
+        };
       in rec {
         packages = {inherit jupyterlab;};
         packages.default = jupyterlab;
         apps.default.program = "${jupyterlab}/bin/jupyter-lab";
         apps.default.type = "app";
+        devShells = {
+          default = developPkgs.mkShell {
+            buildInputs = [
+              (developPkgs.python3.withPackages extraPyPackages)
+              developPkgs.cowsay 
+            ];
+          };
+        };
       }
     );
 }
